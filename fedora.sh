@@ -23,9 +23,11 @@ sudo dnf install -y \
     xorg-x11-drv-fbdev \
     xorg-x11-drv-vesa \
     openbox \
+    pulseaudio \
+    alsa-utils \
     NetworkManager \
     openssh-server \
-    chrony --skip-unavailable
+    chrony
 
 # Remover pacotes desnecessários
 echo "Removendo pacotes desnecessários..."
@@ -76,12 +78,12 @@ audiocapturemode:i:1
 gatewayusagemethod:i:0
 gatewayprofileusagemethod:i:1
 gatewaycredentialssource:i:0
-full address:s:FCIMB-RDSHO.FERREIRACOSTA.LOCAL
+full address:s:192.168.0.102
 alternate shell:s:||SFC_RDS
 remoteapplicationprogram:s:||SFC_RDS
 remoteapplicationname:s:SFC_RDS
 remoteapplicationcmdline:s:
-workspace id:s:FCIMB-RDSHO.ferreiracosta.local
+workspace id:s:192.168.0.102
 use redirection server name:i:1
 loadbalanceinfo:s:tsv://MS Terminal Services Plugin.1.RemoteApp_RDSHO
 EOF
