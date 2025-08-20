@@ -25,7 +25,7 @@ sudo dnf install -y \
     openbox \
     NetworkManager \
     openssh-server \
-    chrony skip-unavailable
+    chrony --skip-unavailable
 
 # Remover pacotes desnecessários
 echo "Removendo pacotes desnecessários..."
