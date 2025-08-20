@@ -22,10 +22,18 @@ sudo dnf install -y \
     xorg-x11-drv-evdev \
     xorg-x11-drv-fbdev \
     xorg-x11-drv-vesa \
+    xorg-x11-utils \
+    xorg-x11-xauth \
     openbox \
+    pulseaudio \
+    pulseaudio-utils \
+    alsa-utils \
     NetworkManager \
     openssh-server \
-    chrony --skip-unavailable
+    chrony \
+    xterm \
+    unclutter-xfixes \
+    mesa-dri-drivers
 
 # Remover pacotes desnecessários
 echo "Removendo pacotes desnecessários..."
@@ -91,42 +99,112 @@ echo "Configurando inicialização X11..."
 sudo tee /home/kiosk/.xinitrc > /dev/null << 'EOF'
 #!/bin/bash
 
-# Desabilitar protetor de tela e gerenciamento de energia
+# Log de debug
+exec > /home/kiosk/xinitrc.log 2>&1
+echo "=== Iniciando .xinitrc ==="
+echo "Data: $(date)"
+echo "Display: $DISPLAY"
+echo "Usuário: $(whoami)"
+
+# Aguardar rede estar disponível
+echo "Aguardando conectividade de rede..."
+for i in {1..30}; do
+    if ping -c 1 FCIMB-RDSHO.FERREIRACOSTA.LOCAL >/dev/null 2>&1; then
+        echo "Conectividade OK após $i tentativas"
+        break
+    fi
+    echo "Tentativa $i/30 - aguardando rede..."
+    sleep 2
+done
+
+# Configurações do X11
+echo "Configurando X11..."
 xset s off
 xset -dpms
 xset s noblank
 
-# Esconder cursor do mouse após inatividade
-unclutter -idle 1 -root &
+# Esconder cursor após inatividade
+unclutter -idle 3 -root &
 
-# Iniciar gerenciador de janelas mínimo
-openbox &
-
-# Aguardar inicialização do X11
+# Configurar áudio
+echo "Configurando áudio..."
+pulseaudio --start --log-target=syslog 2>/dev/null || true
 sleep 2
 
-# Loop infinito para reconexão automática em caso de desconexão
+# Iniciar gerenciador de janelas
+echo "Iniciando Openbox..."
+openbox --config-file /home/kiosk/.config/openbox/rc.xml &
+OPENBOX_PID=$!
+sleep 3
+
+# Testar se Openbox iniciou
+if ! kill -0 $OPENBOX_PID 2>/dev/null; then
+    echo "ERRO: Openbox não iniciou corretamente"
+    xterm -e "echo 'Erro no Openbox. Pressione Enter para tentar novamente'; read" &
+    wait
+    exit 1
+fi
+
+echo "Openbox iniciado com PID: $OPENBOX_PID"
+
+# Função para conexão RDS com logs detalhados
+conectar_rds() {
+    echo "=== Tentativa de conexão RDS ==="
+    echo "Data: $(date)"
+    echo "Servidor: FCIMB-RDSHO.FERREIRACOSTA.LOCAL"
+    echo "Porta: 3389"
+    echo "Aplicação: SFC_RDS"
+    
+    # Testar conectividade antes de tentar conectar
+    echo "Testando conectividade..."
+    if ! nc -z FCIMB-RDSHO.FERREIRACOSTA.LOCAL 3389 2>/dev/null; then
+        echo "ERRO: Não foi possível conectar na porta 3389 do servidor FCIMB-RDSHO.FERREIRACOSTA.LOCAL"
+        return 1
+    fi
+    echo "Porta 3389 acessível"
+    
+    # Conectar usando FreeRDP com todas as configurações da empresa
+    echo "Iniciando conexão FreeRDP com aplicação SFC_RDS..."
+    xfreerdp3 /v:FCIMB-RDSHO.FERREIRACOSTA.LOCAL:3389 \
+              /f \
+              /app:"||SFC_RDS" \
+              /bpp:32 \
+              /audio-mode:0 \
+              /microphone \
+              /clipboard \
+              /drive:home,/home/kiosk \
+              /printer \
+              /smartcard \
+              /span \
+              /multimon \
+              /cert:ignore \
+              /sec:tls \
+              /timeout:60000 \
+              /log-level:INFO \
+              +auto-reconnect \
+              /auto-reconnect-max-retries:5 \
+              +fonts \
+              +aero
+    
+    local exit_code=$?
+    echo "FreeRDP finalizado com código: $exit_code"
+    return $exit_code
+}
+
+# Loop principal de conexão
+tentativa=1
 while true; do
-    echo "Iniciando conexão RDS..."
+    echo "=== Tentativa $tentativa de conexão ==="
     
-    # Conectar via FreeRDP usando arquivo RDP
-    xfreerdp /f /v:FCIMB-RDSHO.FERREIRACOSTA.LOCAL \
-             /port:3389 \
-             /app:"||SFC_RDS" \
-             /bpp:32 \
-             /sound \
-             /microphone \
-             /clipboard \
-             /drive:home,/home/kiosk \
-             /smart-sizing \
-             +fonts \
-             +aero \
-             /cert-ignore \
-             /sec:tls \
-             /timeout:30000
+    if conectar_rds; then
+        echo "Conexão finalizada normalmente"
+    else
+        echo "Conexão falhou ou foi interrompida"
+    fi
     
-    echo "Conexão RDS finalizada. Reagendando em 5 segundos..."
-    sleep 5
+    echo "Aguardando 10 segundos antes de reconectar..."
+    sleep 10
+    ((tentativa++))
 done
 EOF
 
@@ -257,27 +335,122 @@ sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 echo "Criando script de reconexão manual..."
 sudo tee /home/kiosk/reconectar.sh > /dev/null << 'EOF'
 #!/bin/bash
-echo "Forçando reconexão RDS..."
+
+echo "=== Script de Reconexão RDS ==="
+echo "Data: $(date)"
+
+# Matar processos FreeRDP existentes
+echo "Finalizando conexões RDS existentes..."
 pkill -f xfreerdp
-sleep 2
-DISPLAY=:0 xfreerdp /f /v:FCIMB-RDSHO.FERREIRACOSTA.LOCAL \
-         /port:3389 \
-         /app:"||SFC_RDS" \
-         /bpp:32 \
-         /sound \
-         /microphone \
-         /clipboard \
-         /drive:home,/home/kiosk \
-         /smart-sizing \
-         +fonts \
-         +aero \
-         /cert-ignore \
-         /sec:tls \
-         /timeout:30000 &
+pkill -f freerdp
+sleep 3
+
+# Verificar se X11 está rodando
+if [ -z "$DISPLAY" ]; then
+    export DISPLAY=:0
+fi
+
+echo "Display configurado: $DISPLAY"
+
+# Testar conectividade
+echo "Testando conectividade com o servidor..."
+if ping -c 3 192.168.0.102; then
+    echo "Ping OK"
+else
+    echo "AVISO: Ping falhou - verificar conectividade de rede"
+fi
+
+# Testar porta RDS
+echo "Testando porta RDS (3389)..."
+if nc -z 192.168.0.102 3389; then
+    echo "Porta 3389 acessível"
+else
+    echo "ERRO: Porta 3389 não acessível"
+    exit 1
+fi
+
+# Tentar conexão simplificada primeiro
+echo "Iniciando conexão RDS simplificada..."
+xfreerdp3 /v:192.168.0.102:3389 \
+          /f \
+          /bpp:32 \
+          /cert:ignore \
+          /sec:tls \
+          /log-level:INFO \
+          +auto-reconnect
+
+echo "Conexão finalizada com código: $?"
 EOF
 
-sudo chmod +x /home/kiosk/reconectar.sh
-sudo chown kiosk:kiosk /home/kiosk/reconectar.sh
+# Criar script de diagnóstico
+echo "Criando script de diagnóstico..."
+sudo tee /home/kiosk/diagnostico.sh > /dev/null << 'EOF'
+#!/bin/bash
+
+echo "=== DIAGNÓSTICO RDS KIOSK ==="
+echo "Data: $(date)"
+echo "Usuário: $(whoami)"
+echo ""
+
+echo "=== SISTEMA ==="
+echo "Versão do Fedora:"
+cat /etc/fedora-release
+echo ""
+echo "Uptime:"
+uptime
+echo ""
+
+echo "=== REDE ==="
+echo "Interfaces de rede:"
+ip addr show
+echo ""
+echo "Teste de conectividade:"
+ping -c 3 8.8.8.8
+echo ""
+echo "Teste servidor RDS:"
+ping -c 3 192.168.0.102
+echo ""
+echo "Teste porta RDS:"
+nc -zv 192.168.0.102 3389
+echo ""
+
+echo "=== X11 ==="
+echo "Display atual: $DISPLAY"
+echo "Processos X:"
+ps aux | grep -E "(Xorg|xinit|openbox)" | grep -v grep
+echo ""
+echo "Variáveis X11:"
+env | grep -E "(DISPLAY|XAUTHORITY|XDG)"
+echo ""
+
+echo "=== FREERDP ==="
+echo "Versão FreeRDP:"
+xfreerdp3 --version 2>/dev/null || xfreerdp --version 2>/dev/null || echo "FreeRDP não encontrado"
+echo ""
+echo "Processos RDP:"
+ps aux | grep -E "(freerdp|xfreerdp)" | grep -v grep
+echo ""
+
+echo "=== ÁUDIO ==="
+echo "Dispositivos de áudio:"
+pactl list short sinks 2>/dev/null || echo "PulseAudio não disponível"
+echo ""
+
+echo "=== LOGS ==="
+echo "Últimas linhas do log X11:"
+tail -20 /home/kiosk/xinitrc.log 2>/dev/null || echo "Log não encontrado"
+echo ""
+
+echo "=== CONECTIVIDADE DETALHADA ==="
+echo "Tabela de roteamento:"
+ip route
+echo ""
+echo "DNS:"
+cat /etc/resolv.conf
+echo ""
+
+echo "=== FIM DO DIAGNÓSTICO ==="
+EOF
 
 # Configurar rotação de logs para economizar espaço
 echo "Configurando rotação de logs..."
@@ -307,7 +480,7 @@ echo ""
 echo "Configurações aplicadas:"
 echo "- Sistema configurado para autologin do usuário 'kiosk'"
 echo "- X11 inicializa automaticamente em tela cheia"
-echo "- Conexão RDS automática para: FCIMB-RDSHO.FERREIRACOSTA.LOCAL"
+echo "- Conexão RDS automática para: 192.168.0.102"
 echo "- Aplicação: SFC_RDS"
 echo "- Reconexão automática em caso de desconexão"
 echo "- Serviços desnecessários desabilitados"
@@ -317,7 +490,10 @@ echo "Comandos úteis:"
 echo "- Reiniciar: sudo reboot"
 echo "- Desligar: sudo shutdown -h now"
 echo "- Reconectar manualmente: /home/kiosk/reconectar.sh"
+echo "- Diagnóstico completo: /home/kiosk/diagnostico.sh"
+echo "- Ver log do X11: tail -f /home/kiosk/xinitrc.log"
 echo "- Reiniciar rede: sudo systemctl restart NetworkManager"
+echo "- Testar RDS manual: xfreerdp3 /v:192.168.0.102 /cert:ignore"
 echo ""
 echo "IMPORTANTE: Reinicie o sistema para aplicar todas as configurações!"
 echo "Comando: sudo reboot"
