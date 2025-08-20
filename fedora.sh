@@ -23,11 +23,9 @@ sudo dnf install -y \
     xorg-x11-drv-fbdev \
     xorg-x11-drv-vesa \
     openbox \
-    pulseaudio \
-    alsa-utils \
     NetworkManager \
     openssh-server \
-    chrony
+    chrony skip-unavailable
 
 # Remover pacotes desnecessários
 echo "Removendo pacotes desnecessários..."
