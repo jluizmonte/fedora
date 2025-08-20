@@ -33,7 +33,7 @@ sudo dnf install -y \
     chrony \
     xterm \
     unclutter-xfixes \
-    mesa-dri-drivers --skip-unavailable
+    mesa-dri-drivers --skip-unavailable --skip-broken
 
 # Remover pacotes desnecessários
 echo "Removendo pacotes desnecessários..."
