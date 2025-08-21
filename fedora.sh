@@ -3,6 +3,8 @@
 # Script de configuração para Fedora 42 RDS Kiosk
 # Executa apenas conexões RDS em tela cheia
 # Usuário: kiosk
+#Versão 2.1 20/8/25
+#Por José Luiz
 
 set -e
 
@@ -25,9 +27,6 @@ sudo dnf install -y \
     xorg-x11-utils \
     xorg-x11-xauth \
     openbox \
-    pulseaudio \
-    pulseaudio-utils \
-    alsa-utils \
     NetworkManager \
     openssh-server \
     chrony \
@@ -165,10 +164,10 @@ conectar_rds() {
     # Tentar conexão com parâmetros simplificados primeiro
     echo "Iniciando conexão FreeRDP..."
     xfreerdp /v:192.168.0.102:3389 \
+              /u:userServer \
+              /p:"pwdServer" \
               /f \
               /bpp:32 \
-              /audio-mode:0 \
-              /microphone \
               /clipboard \
               /cert:ignore \
               /sec:tls \
@@ -291,7 +290,6 @@ sudo chmod +x /home/kiosk/.xinitrc
 echo "Desabilitando serviços desnecessários..."
 sudo systemctl disable \
     bluetooth.service \
-    cups.service \
     avahi-daemon.service \
     ModemManager.service \
     2>/dev/null || true
@@ -301,6 +299,7 @@ echo "Habilitando serviços necessários..."
 sudo systemctl enable \
     NetworkManager.service \
     sshd.service \
+    cups.service
     chronyd.service
 
 # Configurar firewall para permitir apenas RDS
