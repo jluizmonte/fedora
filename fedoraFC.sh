@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Script de configuração para Fedora 42 RDS Kiosk
+# Script de configuração para Fedora 42 RDS fcosta
 # Executa apenas conexões RDS em tela cheia
-# Usuário: kiosk
+# Usuário: fcosta
 #Versão 2.1 para uso e teste na FC
 
 set -e
 
-echo "=== Configuração Fedora 42 RDS Kiosk ==="
+echo "=== Configuração Fedora 42 RDS fcosta ==="
 echo "Iniciando configuração do sistema..."
 
 # Atualizar sistema
@@ -49,19 +49,19 @@ sudo dnf remove -y \
     calculator \
     2>/dev/null || true
 
-# Configurar autologin do usuário kiosk
-echo "Configurando autologin para usuário kiosk..."
+# Configurar autologin do usuário fcosta
+echo "Configurando autologin para usuário fcosta..."
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
 sudo tee /etc/systemd/system/getty@tty1.service.d/override.conf > /dev/null << 'EOF'
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin kiosk --noclear %I $TERM
+ExecStart=-/sbin/agetty --autologin fcosta --noclear %I $TERM
 EOF
 
 # Criar arquivo RDP com configurações da empresa
 echo "Criando arquivo de configuração RDP..."
-sudo mkdir -p /home/kiosk/.config
-sudo tee /home/kiosk/empresa.rdp > /dev/null << 'EOF'
+sudo mkdir -p /home/fcosta/.config
+sudo tee /home/fcosta/empresa.rdp > /dev/null << 'EOF'
 redirectclipboard:i:1
 redirectprinters:i:1
 redirectcomports:i:0
@@ -92,13 +92,13 @@ use redirection server name:i:1
 loadbalanceinfo:s:tsv://MS Terminal Services Plugin.1.RemoteApp_RDSHO
 EOF
 
-# Criar script de inicialização do X11 para kiosk
+# Criar script de inicialização do X11 para fcosta
 echo "Configurando inicialização X11..."
-sudo tee /home/kiosk/.xinitrc > /dev/null << 'EOF'
+sudo tee /home/fcosta/.xinitrc > /dev/null << 'EOF'
 #!/bin/bash
 
 # Log de debug
-exec > /home/kiosk/xinitrc.log 2>&1
+exec > /home/fcosta/xinitrc.log 2>&1
 echo "=== Iniciando .xinitrc ==="
 echo "Data: $(date)"
 echo "Display: $DISPLAY"
@@ -131,7 +131,7 @@ sleep 2
 
 # Iniciar gerenciador de janelas
 echo "Iniciando Openbox..."
-openbox --config-file /home/kiosk/.config/openbox/rc.xml &
+openbox --config-file /home/fcosta/.config/openbox/rc.xml &
 OPENBOX_PID=$!
 sleep 3
 
@@ -164,8 +164,8 @@ conectar_rds() {
     # Conectar usando FreeRDP com todas as configurações da empresa
     echo "Iniciando conexão FreeRDP com aplicação SFC_RDS..."
     xfreerdp /v:FCIMB-RDSHO.FERREIRACOSTA.LOCAL:3389 \
-              /u:jose.luiz \
-              /p:"Sup0rt3#fc@2023" \
+              /u:userServer \
+              /p:"pwdServer" \
               /d:ferreiracosta.local \
               /f \
               /app:"||SFC_RDS" \
@@ -173,7 +173,7 @@ conectar_rds() {
               /audio-mode:0 \
               /microphone \
               /clipboard \
-              /drive:home,/home/kiosk \
+              /drive:home,/home/fcosta \
               /printer \
               /smartcard \
               /span \
@@ -211,20 +211,20 @@ EOF
 
 # Configurar .bashrc para iniciar X automaticamente
 echo "Configurando .bashrc para auto-inicialização..."
-sudo tee /home/kiosk/.bashrc > /dev/null << 'EOF'
-# .bashrc para kiosk RDS
+sudo tee /home/fcosta/.bashrc > /dev/null << 'EOF'
+# .bashrc para fcosta RDS
 
 # Verificar se está em TTY1 e iniciar X automaticamente
 if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" = "1" ]; then
-    echo "Iniciando modo kiosk RDS..."
+    echo "Iniciando modo fcosta RDS..."
     exec startx
 fi
 EOF
 
-# Configurar Openbox para modo kiosk
+# Configurar Openbox para modo fcosta
 echo "Configurando Openbox..."
-sudo mkdir -p /home/kiosk/.config/openbox
-sudo tee /home/kiosk/.config/openbox/rc.xml > /dev/null << 'EOF'
+sudo mkdir -p /home/fcosta/.config/openbox
+sudo tee /home/fcosta/.config/openbox/rc.xml > /dev/null << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
   <resistance>
@@ -294,8 +294,8 @@ EOF
 
 # Configurar permissões
 echo "Configurando permissões..."
-sudo chown -R kiosk:kiosk /home/kiosk/
-sudo chmod +x /home/kiosk/.xinitrc
+sudo chown -R fcosta:fcosta /home/fcosta/
+sudo chmod +x /home/fcosta/.xinitrc
 
 # Desabilitar serviços desnecessários
 echo "Desabilitando serviços desnecessários..."
@@ -319,10 +319,10 @@ sudo firewall-cmd --permanent --add-port=3389/tcp  # RDS
 sudo firewall-cmd --permanent --add-service=ssh    # SSH para administração
 sudo firewall-cmd --reload
 
-# Configurar sudoers para usuário kiosk (apenas comandos específicos)
+# Configurar sudoers para usuário fcosta (apenas comandos específicos)
 echo "Configurando sudoers..."
-sudo tee /etc/sudoers.d/kiosk > /dev/null << 'EOF'
-kiosk ALL=(ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot, /bin/systemctl restart NetworkManager
+sudo tee /etc/sudoers.d/fcosta > /dev/null << 'EOF'
+fcosta ALL=(ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot, /bin/systemctl restart NetworkManager
 EOF
 
 # Configurar GRUB para boot silencioso e rápido
@@ -333,7 +333,7 @@ sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 
 # Criar script de reconexão manual (para troubleshooting)
 echo "Criando script de reconexão manual..."
-sudo tee /home/kiosk/reconectar.sh > /dev/null << 'EOF'
+sudo tee /home/fcosta/reconectar.sh > /dev/null << 'EOF'
 #!/bin/bash
 
 echo "=== Script de Reconexão RDS ==="
@@ -381,7 +381,7 @@ xfreerdp /v:FCIMB-RDSHO.FERREIRACOSTA.LOCAL:3389 \
           /audio-mode:0 \
           /microphone \
           /clipboard \
-          /drive:home,/home/kiosk \
+          /drive:home,/home/fcosta \
           /printer \
           /smartcard \
           /span \
@@ -398,10 +398,10 @@ EOF
 
 # Criar script de diagnóstico
 echo "Criando script de diagnóstico..."
-sudo tee /home/kiosk/diagnostico.sh > /dev/null << 'EOF'
+sudo tee /home/fcosta/diagnostico.sh > /dev/null << 'EOF'
 #!/bin/bash
 
-echo "=== DIAGNÓSTICO RDS KIOSK ==="
+echo "=== DIAGNÓSTICO RDS fcosta ==="
 echo "Data: $(date)"
 echo "Usuário: $(whoami)"
 echo ""
@@ -452,7 +452,7 @@ echo ""
 
 echo "=== LOGS ==="
 echo "Últimas linhas do log X11:"
-tail -20 /home/kiosk/xinitrc.log 2>/dev/null || echo "Log não encontrado"
+tail -20 /home/fcosta/xinitrc.log 2>/dev/null || echo "Log não encontrado"
 echo ""
 
 echo "=== CONECTIVIDADE DETALHADA ==="
@@ -468,7 +468,7 @@ EOF
 
 # Configurar rotação de logs para economizar espaço
 echo "Configurando rotação de logs..."
-sudo tee /etc/logrotate.d/rds-kiosk > /dev/null << 'EOF'
+sudo tee /etc/logrotate.d/rds-fcosta > /dev/null << 'EOF'
 /var/log/messages {
     weekly
     rotate 2
@@ -492,7 +492,7 @@ echo ""
 echo "=== Configuração concluída! ==="
 echo ""
 echo "Configurações aplicadas:"
-echo "- Sistema configurado para autologin do usuário 'kiosk'"
+echo "- Sistema configurado para autologin do usuário 'fcosta'"
 echo "- X11 inicializa automaticamente em tela cheia"
 echo "- Conexão RDS automática para: FCIMB-RDSHO.FERREIRACOSTA.LOCAL"
 echo "- Aplicação: SFC_RDS"
@@ -503,9 +503,9 @@ echo ""
 echo "Comandos úteis:"
 echo "- Reiniciar: sudo reboot"
 echo "- Desligar: sudo shutdown -h now"
-echo "- Reconectar manualmente: /home/kiosk/reconectar.sh"
-echo "- Diagnóstico completo: /home/kiosk/diagnostico.sh"
-echo "- Ver log do X11: tail -f /home/kiosk/xinitrc.log"
+echo "- Reconectar manualmente: /home/fcosta/reconectar.sh"
+echo "- Diagnóstico completo: /home/fcosta/diagnostico.sh"
+echo "- Ver log do X11: tail -f /home/fcosta/xinitrc.log"
 echo "- Reiniciar rede: sudo systemctl restart NetworkManager"
 echo "- Testar RDS manual: xfreerdp /v:FCIMB-RDSHO.FERREIRACOSTA.LOCAL /app:'||SFC_RDS' /cert:ignore"
 echo ""
