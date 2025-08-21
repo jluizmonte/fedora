@@ -85,13 +85,13 @@ gatewayusagemethod:i:0
 gatewayprofileusagemethod:i:1
 gatewaycredentialssource:i:0
 full address:s:192.168.0.102
-alternate shell:s:||SFC_RDS
-remoteapplicationprogram:s:||SFC_RDS
-remoteapplicationname:s:SFC_RDS
+#alternate shell:s:||SFC_RDS
+#remoteapplicationprogram:s:||SFC_RDS
+#remoteapplicationname:s:SFC_RDS
 remoteapplicationcmdline:s:
 workspace id:s:192.168.0.102
 use redirection server name:i:1
-loadbalanceinfo:s:tsv://MS Terminal Services Plugin.1.RemoteApp_RDSHO
+#loadbalanceinfo:s:tsv://MS Terminal Services Plugin.1.RemoteApp_RDSHO
 EOF
 
 # Criar script de inicialização do X11 para kiosk
@@ -164,7 +164,7 @@ conectar_rds() {
     
     # Tentar conexão com parâmetros simplificados primeiro
     echo "Iniciando conexão FreeRDP..."
-    xfreerdp3 /v:192.168.0.102:3389 \
+    xfreerdp /v:192.168.0.102:3389 \
               /f \
               /bpp:32 \
               /audio-mode:0 \
@@ -362,7 +362,7 @@ fi
 
 # Tentar conexão simplificada primeiro
 echo "Iniciando conexão RDS simplificada..."
-xfreerdp3 /v:192.168.0.102:3389 \
+xfreerdp /v:192.168.0.102:3389 \
           /f \
           /bpp:32 \
           /cert:ignore \
@@ -416,7 +416,7 @@ echo ""
 
 echo "=== FREERDP ==="
 echo "Versão FreeRDP:"
-xfreerdp3 --version 2>/dev/null || xfreerdp --version 2>/dev/null || echo "FreeRDP não encontrado"
+xfreerdp --version 2>/dev/null || xfreerdp --version 2>/dev/null || echo "FreeRDP não encontrado"
 echo ""
 echo "Processos RDP:"
 ps aux | grep -E "(freerdp|xfreerdp)" | grep -v grep
@@ -484,7 +484,7 @@ echo "- Reconectar manualmente: /home/kiosk/reconectar.sh"
 echo "- Diagnóstico completo: /home/kiosk/diagnostico.sh"
 echo "- Ver log do X11: tail -f /home/kiosk/xinitrc.log"
 echo "- Reiniciar rede: sudo systemctl restart NetworkManager"
-echo "- Testar RDS manual: xfreerdp3 /v:192.168.0.102 /cert:ignore"
+echo "- Testar RDS manual: xfreerdp /v:192.168.0.102 /cert:ignore"
 echo ""
 echo "IMPORTANTE: Reinicie o sistema para aplicar todas as configurações!"
 echo "Comando: sudo reboot"
