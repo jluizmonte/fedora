@@ -164,8 +164,8 @@ conectar_rds() {
     # Conectar usando FreeRDP com todas as configurações da empresa
     echo "Iniciando conexão FreeRDP com aplicação SFC_RDS..."
     xfreerdp /v:FCIMB-RDSHO.FERREIRACOSTA.LOCAL:3389 \
-              /u:userServer \
-              /p:"pwdServer" \
+              /u:jose.luiz \
+              /p:"Sup0rt3#fc@2023" \
               /d:ferreiracosta.local \
               /f \
               /app:"||SFC_RDS" \
